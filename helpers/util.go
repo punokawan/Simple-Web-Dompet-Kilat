@@ -3,14 +3,14 @@ package helpers
 import "strings"
 
 type JError struct {
-	Error string `json:"error"`
+	Message string `json:"error"`
 	// Code	int		`json:"code"`
 }
 
 func NewJError(err error) JError {
 	jerr := JError{"generic error"}
 	if err != nil {
-		jerr.Error = err.Error()
+		jerr.Message = err.Error()
 	}
 	return jerr
 }
