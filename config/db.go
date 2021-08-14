@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,8 +21,20 @@ type MongoInstance struct {
 var MI MongoInstance
 
 func ConnectDB() {
+	MONGO_URI := strings.Join(
+		[]string{
+			"mongodb://",
+			os.Getenv("MONGO_USERNAME"),
+			":",
+			os.Getenv("MONGO_PASSWORD"),
+			"@",
+			os.Getenv("MONGO_HOST"),
+			":",
+			os.Getenv("MONGO_PORT"),
+		},
+		"")
 
-	client, err := mongo.NewClient(options.Client().ApplyURI(os.Getenv("MONGO_URI")))
+	client, err := mongo.NewClient(options.Client().ApplyURI(MONGO_URI))
 	if err != nil {
 		log.Fatal(err)
 	}
