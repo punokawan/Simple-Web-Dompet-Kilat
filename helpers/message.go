@@ -6,7 +6,7 @@ import (
 
 type resMessage struct {
 	Code    int         `json:"code,omitempty"`    // status code HTTP
-	Succes  bool        `json:"succes,omitempty"`  // is endpoint error? (T/F)
+	Succes  bool        `json:"succes"`            // is endpoint error? (T/F)
 	Message string      `json:"message,omitempty"` // Message from handler
 	Data    interface{} `json:"data,omitempty"`    // Data from resource
 }
