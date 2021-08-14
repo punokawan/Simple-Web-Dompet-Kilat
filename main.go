@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	"github.com/punokawan/Simple-Web-Dompet-Kilat/config"
+	"github.com/punokawan/Simple-Web-Dompet-Kilat/helpers"
 	"github.com/punokawan/Simple-Web-Dompet-Kilat/routes"
 )
 
@@ -23,11 +24,12 @@ func init() {
 
 func setupRoutes(app *fiber.App) {
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.Status(fiber.StatusOK).JSON(fiber.Map{
-			"success":     true,
-			"message":     "You are at the root endpoint 😉",
-			"github_repo": "https://github.com/punokawan/Simple-Web-Dompet-Kilat",
-		})
+		return helpers.ResponseMsg(
+			c,
+			200,
+			true,
+			"You are at the root endpoint 😉, github_repo: https://github.com/punokawan/Simple-Web-Dompet-Kilat",
+			nil)
 	})
 
 	api := app.Group("/api")

@@ -2,11 +2,11 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v2"
-	// "github.com/mikefmeyer/catchphrase-go-mongodb-rest-api/controllers" // replace
+	"github.com/punokawan/Simple-Web-Dompet-Kilat/helpers"
 )
 
 func AuthRoute(route fiber.Router) {
 	route.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, this is routes with preffix auth 👋!")
+		return helpers.ResponseMsg(c, 200, true, "Hello, this is routes with preffix auth 👋!", nil)
 	})
 }
