@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
-	"github.com/punokawan/Simple-Web-Dompet-Kilat/config"
+	"github.com/punokawan/Simple-Web-Dompet-Kilat/database"
 	"github.com/punokawan/Simple-Web-Dompet-Kilat/helpers"
 	"github.com/punokawan/Simple-Web-Dompet-Kilat/routes"
 )
@@ -43,7 +43,7 @@ func main() {
 	app.Use(cors.New())
 	app.Use(logger.New())
 
-	config.ConnectDB()
+	database.ConnectDB()
 
 	setupRoutes(app)
 
