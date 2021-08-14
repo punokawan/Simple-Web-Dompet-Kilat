@@ -11,4 +11,5 @@ func AuthRoute(route fiber.Router) {
 		return helpers.ResponseMsg(c, 200, true, "Hello, this is routes with preffix auth 👋!", nil)
 	})
 	route.Post("/register", controllers.SignUp)
+	route.Post("/login", controllers.SignIn)
 }

@@ -3,7 +3,6 @@ package controllers
 import (
 	"context"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"gopkg.in/asaskevich/govalidator.v9"
 )
 
@@ -29,76 +29,78 @@ import (
 // }
 
 var ctx = context.Background()
-var users = new(models.Users)
+var user = new(models.Users)
+var input = new(models.Users)
 
 func SignUp(c *fiber.Ctx) error {
 	userCollection := database.MI.DB.Collection("users")
 	ctx, _ := context.WithTimeout(ctx, 10*time.Second)
 
-	if err := c.BodyParser(&users); err != nil {
+	if err := c.BodyParser(&input); err != nil {
 		log.Println(err)
 		return helpers.ResponseMsg(
 			c,
-			http.StatusUnprocessableEntity,
+			fiber.StatusUnprocessableEntity,
 			false,
 			"Failed to parse body",
 			nil)
 	}
 
-	if govalidator.IsNull(users.Username) {
+	if govalidator.IsNull(input.Username) {
 		return helpers.ResponseMsg(
 			c,
-			http.StatusBadRequest,
+			fiber.StatusBadRequest,
 			false,
 			helpers.NewJError(helpers.ErrEmptyUsername).Message,
 			nil)
 	}
 
-	if govalidator.IsNull(users.Password) {
+	if govalidator.IsNull(input.Password) {
 		return helpers.ResponseMsg(
 			c,
-			http.StatusBadRequest,
+			fiber.StatusBadRequest,
 			false,
 			helpers.NewJError(helpers.ErrEmptyPassword).Message,
 			nil)
 	}
 
-	users.Email = helpers.NormalizeEmail(users.Email)
-	if !govalidator.IsEmail(users.Email) {
+	input.Email = helpers.NormalizeEmail(input.Email)
+	if !govalidator.IsEmail(input.Email) {
 		return helpers.ResponseMsg(
 			c,
-			http.StatusBadRequest,
+			fiber.StatusBadRequest,
 			false,
 			helpers.NewJError(helpers.ErrInvalidEmail).Message,
 			nil)
 	}
 
-	findEmail := userCollection.FindOne(ctx, bson.M{"email": users.Email})
+	findEmail := userCollection.FindOne(ctx, bson.M{"email": input.Email})
 	if err := findEmail.Err(); err != nil {
-		if strings.TrimSpace(users.Password) == "" {
+		if strings.TrimSpace(input.Password) == "" {
 			return c.
-				Status(http.StatusBadRequest).
+				Status(fiber.StatusBadRequest).
 				JSON(helpers.NewJError(helpers.ErrEmptyPassword))
 		}
 
-		users.Password, err = security.EncryptPassword(users.Password)
+		input.Password, err = security.EncryptPassword(input.Password)
 		if err != nil {
 			return helpers.ResponseMsg(
 				c,
-				http.StatusBadRequest,
+				fiber.StatusBadRequest,
 				false,
 				helpers.NewJError(err).Message,
 				nil)
 		}
 
-		users.CreatedAt = time.Now()
-		users.UpdatedAt = users.CreatedAt
-		result, err := userCollection.InsertOne(ctx, users)
+		input.CreatedAt = time.Now()
+		input.UpdatedAt = input.CreatedAt
+		input.ID = primitive.NewObjectIDFromTimestamp(time.Now())
+		result, err := userCollection.InsertOne(ctx, input)
 
 		if err != nil {
 			return helpers.ResponseMsg(
 				c,
-				http.StatusInternalServerError,
+				fiber.StatusInternalServerError,
 				false,
 				"user failed to register",
 				nil)
@@ -106,7 +108,7 @@ func SignUp(c *fiber.Ctx) error {
 
 		return helpers.ResponseMsg(
 			c,
-			http.StatusCreated,
+			fiber.StatusCreated,
 			true,
 			"user registered successfully",
 			result)
@@ -114,8 +116,84 @@ func SignUp(c *fiber.Ctx) error {
 
 	return helpers.ResponseMsg(
 		c,
-		http.StatusBadRequest,
+		fiber.StatusBadRequest,
 		false,
 		helpers.NewJError(helpers.ErrEmailAlreadyExists).Message,
 		nil)
+}
+
+func SignIn(c *fiber.Ctx) error {
+	userCollection := database.MI.DB.Collection("users")
+	ctx, _ := context.WithTimeout(ctx, 10*time.Second)
+
+	if err := c.BodyParser(&input); err != nil {
+		log.Println(err)
+		return helpers.ResponseMsg(
+			c,
+			fiber.StatusUnprocessableEntity,
+			false,
+			"Failed to parse body",
+			nil)
+	}
+
+	if govalidator.IsNull(input.Password) {
+		return helpers.ResponseMsg(
+			c,
+			fiber.StatusBadRequest,
+			false,
+			helpers.NewJError(helpers.ErrEmptyPassword).Message,
+			nil)
+	}
+
+	input.Email = helpers.NormalizeEmail(input.Email)
+
+	findUser := userCollection.FindOne(ctx, bson.M{"email": input.Email})
+	if err := findUser.Err(); err != nil {
+		return helpers.ResponseMsg(
+			c,
+			fiber.StatusUnauthorized,
+			false,
+			helpers.NewJError(helpers.ErrInvalidCredentials).Message,
+			nil)
+	}
+
+	err := findUser.Decode(&user)
+	if err != nil {
+		return helpers.ResponseMsg(
+			c,
+			fiber.StatusNotFound,
+			false,
+			helpers.NewJError(err).Message,
+			nil)
+	}
+
+	log.Printf("user : %s, \ninput: %s", user, input)
+	err = security.VerifyPassword(user.Password, input.Password)
+	if err != nil {
+		return helpers.ResponseMsg(
+			c,
+			fiber.StatusUnauthorized,
+			false,
+			helpers.NewJError(helpers.ErrInvalidCredentials).Message,
+			nil)
+	}
+	token, err := security.NewToken(user.ID.Hex())
+	if err != nil {
+		return helpers.ResponseMsg(
+			c,
+			fiber.StatusUnauthorized,
+			false,
+			helpers.NewJError(err).Message,
+			nil)
+	}
+	response := fiber.Map{
+		"user":  user,
+		"token": strings.Join([]string{"Bearer ", token}, ""),
+	}
+	return helpers.ResponseMsg(
+		c,
+		fiber.StatusOK,
+		true,
+		"Login scuccessful",
+		response)
 }
